@@ -5,12 +5,9 @@ import os
 
 app = Flask(__name__)
 
-# Load model + dataset safely
-try:
-    model, mlb = joblib.load("model.pkl")
-    data = pd.read_csv("dataset.csv")
-except Exception as e:
-    print("Error loading model or dataset:", e)
+# Load model + dataset
+model, mlb = joblib.load("model.pkl")
+data = pd.read_csv("dataset.csv")
 
 # Prepare symptoms list
 symptoms = set()
@@ -25,19 +22,16 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    try:
-        name = request.form.get('name')
-        selected = [request.form.get(f'symptom{i}') for i in range(1,6)]
-        selected = [s for s in selected if s]
+    selected = [request.form.get(f'symptom{i}') for i in range(1,6)]
+    selected = [s for s in selected if s]
 
-        X = mlb.transform([selected])
-        probs = model.predict_proba(X)[0]
-        top = probs.argsort()[-3:][::-1]
+    X = mlb.transform([selected])
+    probs = model.predict_proba(X)[0]
+    top = probs.argsort()[-3:][::-1]
 
-        results = [{"disease": model.classes_[i], "prob": round(probs[i]*100,2)} for i in top]
-        return render_template("index.html", symptoms=symptoms, results=results, name=name)
-    except Exception as e:
-        return f"Prediction Error: {e}"
+    results = [{"disease": model.classes_[i], "prob": round(probs[i]*100,2)} for i in top]
+
+    return render_template("index.html", symptoms=symptoms, results=results)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
